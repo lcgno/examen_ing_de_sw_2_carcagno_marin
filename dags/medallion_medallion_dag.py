@@ -94,12 +94,19 @@ def build_dag() -> DAG:
         
         # 1. Bronze: Limpieza de datos
         bronze_task = PythonOperator(
-            task_id="bronze_clean",
+            task_id="bronze",
             python_callable=_run_clean_data,
             op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
         )
 
-        bronze_task >> #silver_task >> gold_task
+        silver_task = PythonOperator(
+            task_id="silver",
+            python_callable=_run_dbt_command,
+            op_kwargs={"command": "run", 
+                       "ds_nodash": "{{ ds_nodash }}"},
+        )
+
+        bronze_task >> silver_task
 
     return medallion_dag
 
