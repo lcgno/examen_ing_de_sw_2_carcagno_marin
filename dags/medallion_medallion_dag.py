@@ -70,11 +70,17 @@ def _run_dbt_command(command: str, ds_nodash: str) -> subprocess.CompletedProces
 def _run_clean_data(ds_nodash: str) -> None:
     """Wrapper para transformar ds_nodash en datetime y así poder ejecutar la limpieza de datos."""
     execution_date = datetime.strptime(ds_nodash, "%Y%m%d").date()
-    clean_daily_transactions(
-        execution_date=execution_date,
-        raw_dir=RAW_DIR,
-        clean_dir=CLEAN_DIR,
+    
+    raw = RAW_DIR / f"transactions_{ds_nodash}.csv"
+    if raw.exists():
+        clean_daily_transactions(
+            execution_date=execution_date,
+            raw_dir=RAW_DIR,
+            clean_dir=CLEAN_DIR
     )
+    else:
+        print(f"Raw file {raw} does not exist.")
+        return
 
 def _run_dbt_gold(ds_nodash: str) -> None:
     # Ejecutar dbt test
