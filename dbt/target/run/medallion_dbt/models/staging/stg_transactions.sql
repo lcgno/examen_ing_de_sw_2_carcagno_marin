@@ -1,10 +1,13 @@
-{% set clean_dir = var('clean_dir') %}
-{% set ds_nodash = var('ds_nodash') %}
+
+  
+  create view "medallion"."main"."stg_transactions__dbt_tmp" as (
+    
+
 
 with source as (
     select *
     from read_parquet(
-        '{{ clean_dir }}/transactions_{{ ds_nodash }}_clean.parquet'
+        '/home/carca/wslDocumentos/Codigo/examen_ing_de_sw_2_carcagno_marin/data/clean/transactions_20251211_clean.parquet'
     )
 )
 
@@ -18,3 +21,4 @@ select
     cast(transaction_date as date) as transaction_date
 
 from source
+  );
