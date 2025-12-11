@@ -82,6 +82,20 @@ def _run_clean_data(ds_nodash: str) -> None:
         print(f"Raw file {raw} does not exist.")
         return
 
+def _run_dbt_silver(ds_nodash: str) -> None:
+    """Run dbt models to load clean parquet into DuckDB."""
+    # Verificar que existe el parquet de Bronze
+    parquet_file = CLEAN_DIR / f"transactions_{ds_nodash}_clean.parquet"
+    if not parquet_file.exists():
+        print(f"⚠️ Parquet no encontrado para {ds_nodash}, saltando dbt run...")
+        return
+    
+    result = _run_dbt_command("run", ds_nodash)
+    if result.returncode != 0:
+        raise AirflowException(
+            f"dbt run failed with exit code {result.returncode}:\n{result.stderr}"
+        )
+
 def _run_dbt_gold(ds_nodash: str) -> None:
     # Ejecutar dbt test
     result = _run_dbt_command("test", ds_nodash)
@@ -129,9 +143,8 @@ def build_dag() -> DAG:
 
         silver_task = PythonOperator(
             task_id="silver",
-            python_callable=_run_dbt_command,
-            op_kwargs={"command": "run", 
-                       "ds_nodash": "{{ ds_nodash }}"},
+            python_callable=_run_dbt_silver,
+            op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
         )
 
         gold_task = PythonOperator(
