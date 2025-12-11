@@ -76,6 +76,28 @@ def _run_clean_data(ds_nodash: str) -> None:
         clean_dir=CLEAN_DIR,
     )
 
+def _run_dbt_gold(ds_nodash: str) -> None:
+    # Ejecutar dbt test
+    result = _run_dbt_command("test", ds_nodash)
+    
+    QUALITY_DIR.mkdir(parents=True, exist_ok=True)
+    output_file = QUALITY_DIR / f"dq_results_{ds_nodash}.json"
+    
+    dq_results = {
+        "ds_nodash": ds_nodash,
+        "status": "passed" if result.returncode == 0 else "failed",
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+    }
+    
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(dq_results, f, indent=2)
+    
+    if result.returncode != 0:
+        raise AirflowException(
+            f"dbt test falló."
+        )
+
 
 def build_dag() -> DAG:
     """Construct the medallion pipeline DAG with bronze/silver/gold tasks."""
@@ -106,7 +128,13 @@ def build_dag() -> DAG:
                        "ds_nodash": "{{ ds_nodash }}"},
         )
 
-        bronze_task >> silver_task
+        gold_task = PythonOperator(
+            task_id="gold",
+            python_callable=_run_dbt_gold,
+            op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
+        )
+
+        bronze_task >> silver_task >> gold_task
 
     return medallion_dag
 
