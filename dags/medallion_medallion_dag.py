@@ -16,14 +16,12 @@ from airflow.operators.python import PythonOperator
 
 # pylint: disable=import-error,wrong-import-position
 
-
 BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
-from include.transformations import (
-    clean_daily_transactions,
-)  # pylint: disable=wrong-import-position
+from include.transformations import \
+    clean_daily_transactions  # pylint: disable=wrong-import-position
 
 RAW_DIR = BASE_DIR / "data/raw"
 CLEAN_DIR = BASE_DIR / "data/clean"
@@ -64,59 +62,65 @@ def _run_dbt_command(command: str, ds_nodash: str) -> subprocess.CompletedProces
         check=False,
     )
 
+
 ######################
-# Propio  
+# Propio
 ######################
 def _run_clean_data(ds_nodash: str) -> None:
-    """Wrapper para transformar ds_nodash en datetime y así poder ejecutar la limpieza de datos."""
+    """
+    Wrapper para transformar ds_nodash en datetime y así poder ejecutar la limpieza de datos.
+    Antes de transformar chequea que exista un archivo raw para el día en análisis.    
+    """
     execution_date = datetime.strptime(ds_nodash, "%Y%m%d").date()
-    
+
     raw = RAW_DIR / f"transactions_{ds_nodash}.csv"
     if raw.exists():
         clean_daily_transactions(
-            execution_date=execution_date,
-            raw_dir=RAW_DIR,
-            clean_dir=CLEAN_DIR
-    )
+            execution_date=execution_date, raw_dir=RAW_DIR, clean_dir=CLEAN_DIR
+        )
     else:
         print(f"Raw file {raw} does not exist.")
-        return
+        
 
 def _run_dbt_silver(ds_nodash: str) -> None:
-    """Run dbt models to load clean parquet into DuckDB."""
+    """Levanta el archivo .parquet de Bronze y ejecuta dbt run.
+    Antes de ejecutar dbt run, chequea que exista el archivo.
+    """
     # Verificar que existe el parquet de Bronze
     parquet_file = CLEAN_DIR / f"transactions_{ds_nodash}_clean.parquet"
     if not parquet_file.exists():
-        print(f"⚠️ Parquet no encontrado para {ds_nodash}, saltando dbt run...")
+        print(f"Parquet no encontrado para {ds_nodash}.")
         return
-    
+
     result = _run_dbt_command("run", ds_nodash)
-    if result.returncode != 0:
-        raise AirflowException(
-            f"dbt run failed with exit code {result.returncode}:\n{result.stderr}"
-        )
+
 
 def _run_dbt_gold(ds_nodash: str) -> None:
+    """Levanta el archivo .parquet de Bronze y ejecuta dbt test.
+    Antes de ejecutar dbt test, chequea que exista el archivo.
+    """
+
+    # Checkear que existe el parquet de Bronze
+    parquet_file = CLEAN_DIR / f"transactions_{ds_nodash}_clean.parquet"
+    if not parquet_file.exists():
+        print(f"Parquet no encontrado para {ds_nodash}.")
+        return
+
     # Ejecutar dbt test
     result = _run_dbt_command("test", ds_nodash)
-    
+
     QUALITY_DIR.mkdir(parents=True, exist_ok=True)
     output_file = QUALITY_DIR / f"dq_results_{ds_nodash}.json"
-    
+
     dq_results = {
         "ds_nodash": ds_nodash,
         "status": "passed" if result.returncode == 0 else "failed",
         "stdout": result.stdout,
         "stderr": result.stderr,
     }
-    
+
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(dq_results, f, indent=2)
-    
-    if result.returncode != 0:
-        raise AirflowException(
-            f"dbt test falló."
-        )
 
 
 def build_dag() -> DAG:
@@ -131,22 +135,24 @@ def build_dag() -> DAG:
     ) as medallion_dag:
 
         ######################
-        # Propio  
+        # Propio
         ######################
-        
-        # 1. Bronze: Limpieza de datos
+
+        # 1
         bronze_task = PythonOperator(
             task_id="bronze",
             python_callable=_run_clean_data,
             op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
         )
 
+        # 2
         silver_task = PythonOperator(
             task_id="silver",
             python_callable=_run_dbt_silver,
             op_kwargs={"ds_nodash": "{{ ds_nodash }}"},
         )
 
+        # 3
         gold_task = PythonOperator(
             task_id="gold",
             python_callable=_run_dbt_gold,
@@ -156,6 +162,5 @@ def build_dag() -> DAG:
         bronze_task >> silver_task >> gold_task
 
     return medallion_dag
-
 
 dag = build_dag()

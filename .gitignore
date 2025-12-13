@@ -1,2 +1,17 @@
 .venv/
 airflow_home/
+
+# DBT
+dbt/target/
+dbt/logs/
+
+# Python
+__pycache__/
+*.pyc
+
+dags/__pycache__/
+
+# OS
+.DS_Store
+
+.vscode
