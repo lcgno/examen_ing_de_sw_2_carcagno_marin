@@ -87,7 +87,7 @@ def _run_dbt_silver(ds_nodash: str) -> None:
     # Verificar que existe el parquet de Bronze
     parquet_file = CLEAN_DIR / f"transactions_{ds_nodash}_clean.parquet"
     if not parquet_file.exists():
-        print(f"⚠️ Parquet no encontrado para {ds_nodash}, saltando dbt run...")
+        print(f"Parquet no encontrado para {ds_nodash}, saltando dbt run...")
         return
     
     result = _run_dbt_command("run", ds_nodash)
@@ -97,6 +97,12 @@ def _run_dbt_silver(ds_nodash: str) -> None:
         )
 
 def _run_dbt_gold(ds_nodash: str) -> None:
+    
+    parquet_file = CLEAN_DIR / f"transactions_{ds_nodash}_clean.parquet"
+    if not parquet_file.exists():
+        print(f"Parquet no encontrado para {ds_nodash}, saltando dbt run...")
+        return
+    
     # Ejecutar dbt test
     result = _run_dbt_command("test", ds_nodash)
     
@@ -112,9 +118,6 @@ def _run_dbt_gold(ds_nodash: str) -> None:
     
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(dq_results, f, indent=2)
-    
-    if result.returncode != 0:
-        return
 
 
 def build_dag() -> DAG:
