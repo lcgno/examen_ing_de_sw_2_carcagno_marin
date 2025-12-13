@@ -5,10 +5,6 @@ airflow_home/
 dbt/target/
 dbt/logs/
 
-# data
-data/clean/
-data/quality/
-
 # Python
 __pycache__/
 *.pyc
