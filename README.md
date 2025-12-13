@@ -201,9 +201,9 @@ isort dags include && black dags include && pylint dags/*.py include/*.py
 
 ## TODOs
 Necesarios para completar el workflow:
-- [ ] Implementar tareas de Airflow.
-- [ ] Implementar modelos de dbt según cada archivo schema.yml.
-- [ ] Implementar pruebas de dbt para asegurar que las tablas gold estén correctas.
-- [ ] Documentar mejoras posibles para el proceso considerado aspectos de escalabilidad y modelado de datos.
+- [ x] Implementar tareas de Airflow.
+- [ x] Implementar modelos de dbt según cada archivo schema.yml.
+- [ x] Implementar pruebas de dbt para asegurar que las tablas gold estén correctas.
+- [ x] Documentar mejoras posibles para el proceso considerado aspectos de escalabilidad y modelado de datos.
 Nice to hace:
-- [ ] Manejar el caso que no haya archivos para el dia indicado.
+- [ x] Manejar el caso que no haya archivos para el dia indicado.
