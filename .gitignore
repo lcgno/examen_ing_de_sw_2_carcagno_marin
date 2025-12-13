@@ -13,3 +13,5 @@ dags/__pycache__/
 
 # OS
 .DS_Store
+
+.vscode
